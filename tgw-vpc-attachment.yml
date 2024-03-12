@@ -1,0 +1,81 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Provisioning TGW VPC attachment.
+Resources: 
+  Vpc: 
+    Type: AWS::EC2::VPC
+    Properties: 
+      CidrBlock: 10.0.0.0/16
+      Tags: 
+        - Key: Name
+          Value: vpc
+  VpcSubnet: 
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: 
+        Ref: Vpc
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: 
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      Tags: 
+        - Key: Name
+          Value: vpc-subnet
+  VpcRtb: 
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: 
+        Ref: Vpc
+      Tags: 
+        - Key: Name
+          Value: vpc-rtb
+  VpcSubnetRouteTableAssociation: 
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: 
+        Ref: VpcSubnet
+      RouteTableId: 
+        Ref: VpcRtb
+  Tgw: 
+    Type: AWS::EC2::TransitGateway
+    Properties: 
+      AmazonSideAsn: 64512
+      DefaultRouteTableAssociation: disable
+      DefaultRouteTablePropagation: disable
+      Tags: 
+        - Key: Name
+          Value: tgw
+  TgwRtb: 
+    Type: AWS::EC2::TransitGatewayRouteTable
+    Properties: 
+      TransitGatewayId: 
+        Ref: Tgw
+      Tags: 
+        - Key: Name
+          Value: tgw-rtb
+  TgwVpcAttach: 
+    Type: AWS::EC2::TransitGatewayAttachment
+    Properties: 
+      SubnetIds: 
+        - Ref: VpcSubnet
+      TransitGatewayId: 
+        Ref: Tgw
+      VpcId: 
+        Ref: Vpc
+      Tags: 
+        - Key: Name
+          Value: tgw-vpc-attach
+  TransitGatewayRouteTableAssociation: 
+    Type: AWS::EC2::TransitGatewayRouteTableAssociation
+    Properties: 
+      TransitGatewayAttachmentId: 
+        Ref: TgwVpcAttach
+      TransitGatewayRouteTableId: 
+        Ref: TgwRtb
+  TransitGatewayRouteTablePropagation: 
+    Type: AWS::EC2::TransitGatewayRouteTablePropagation
+    Properties: 
+      TransitGatewayAttachmentId: 
+        Ref: TgwVpcAttach
+      TransitGatewayRouteTableId: 
+        Ref: TgwRtb
